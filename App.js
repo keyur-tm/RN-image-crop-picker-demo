@@ -1,112 +1,299 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- * @flow strict-local
- */
-
-import React from 'react';
-import type {Node} from 'react';
+import React, {Component} from 'react';
 import {
-  SafeAreaView,
+  Alert,
+  Image,
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
-  useColorScheme,
+  TouchableOpacity,
   View,
 } from 'react-native';
-
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
-
-const Section = ({children, title}): Node => {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
-};
-
-const App: () => Node = () => {
-  const isDarkMode = useColorScheme() === 'dark';
-
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
-  };
-
-  return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.js</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
-        </View>
-      </ScrollView>
-    </SafeAreaView>
-  );
-};
+import ImagePicker from 'react-native-image-crop-picker';
 
 const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
+  button: {
+    backgroundColor: 'blue',
+    marginBottom: 10,
   },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
-  },
-  highlight: {
-    fontWeight: '700',
+  text: {
+    color: 'white',
+    fontSize: 20,
+    textAlign: 'center',
   },
 });
 
-export default App;
+export default class App extends Component {
+  constructor() {
+    super();
+    this.state = {
+      image: null,
+      images: null,
+    };
+  }
+
+  pickSingleWithCamera(cropping, mediaType = 'photo') {
+    ImagePicker.openCamera({
+      cropping: cropping,
+      width: 500,
+      height: 500,
+      includeExif: true,
+      mediaType,
+    })
+      .then((image) => {
+        console.log('received image', image);
+        this.setState({
+          image: {
+            uri: image.path,
+            width: image.width,
+            height: image.height,
+            mime: image.mime,
+          },
+          images: null,
+        });
+      })
+      .catch((e) => alert(e));
+  }
+
+  pickSingleBase64(cropit) {
+    ImagePicker.openPicker({
+      width: 300,
+      height: 300,
+      cropping: cropit,
+      includeBase64: true,
+      includeExif: true,
+    })
+      .then((image) => {
+        console.log('received base64 image');
+        this.setState({
+          image: {
+            uri: `data:${image.mime};base64,` + image.data,
+            width: image.width,
+            height: image.height,
+          },
+          images: null,
+        });
+      })
+      .catch((e) => alert(e));
+  }
+
+  cleanupImages() {
+    ImagePicker.clean()
+      .then(() => {
+        console.log('removed tmp images from tmp directory');
+      })
+      .catch((e) => {
+        alert(e);
+      });
+  }
+
+  cleanupSingleImage() {
+    let image =
+      this.state.image ||
+      (this.state.images && this.state.images.length
+        ? this.state.images[0]
+        : null);
+    console.log('will cleanup image', image);
+
+    ImagePicker.cleanSingle(image ? image.uri : null)
+      .then(() => {
+        console.log(`removed tmp image ${image.uri} from tmp directory`);
+      })
+      .catch((e) => {
+        alert(e);
+      });
+  }
+
+  cropLast() {
+    if (!this.state.image) {
+      return Alert.alert(
+        'No image',
+        'Before open cropping only, please select image',
+      );
+    }
+
+    ImagePicker.openCropper({
+      path: this.state.image.uri,
+      width: 200,
+      height: 200,
+    })
+      .then((image) => {
+        console.log('received cropped image', image);
+        this.setState({
+          image: {
+            uri: image.path,
+            width: image.width,
+            height: image.height,
+            mime: image.mime,
+          },
+          images: null,
+        });
+      })
+      .catch((e) => {
+        console.log(e);
+        Alert.alert(e.message ? e.message : e);
+      });
+  }
+
+  pickSingle(cropit, mediaType) {
+    ImagePicker.openPicker({
+      width: 500,
+      height: 1000,
+      cropping: cropit,
+      cropperCircleOverlay: true,
+      sortOrder: 'none',
+      compressImageMaxWidth: 1000,
+      compressImageMaxHeight: 1000,
+      compressImageQuality: 1,
+      compressVideoPreset: 'MediumQuality',
+      includeExif: true,
+      cropperStatusBarColor: 'white',
+      cropperToolbarColor: 'white',
+      cropperActiveWidgetColor: 'white',
+      cropperToolbarWidgetColor: '#3498DB',
+    })
+      .then((image) => {
+        console.log('received image', image);
+        this.setState({
+          image: {
+            uri: image.path,
+            width: image.width,
+            height: image.height,
+            mime: image.mime,
+          },
+          images: null,
+        });
+      })
+      .catch((e) => {
+        console.log(e);
+        Alert.alert(e.message ? e.message : e);
+      });
+  }
+
+  pickMultiple() {
+    ImagePicker.openPicker({
+      multiple: true,
+      waitAnimationEnd: false,
+      sortOrder: 'desc',
+      includeExif: true,
+      forceJpg: true,
+    })
+      .then((images) => {
+        this.setState({
+          image: null,
+          images: images.map((i) => {
+            console.log('received image', i);
+            return {
+              uri: i.path,
+              width: i.width,
+              height: i.height,
+              mime: i.mime,
+            };
+          }),
+        });
+      })
+      .catch((e) => alert(e));
+  }
+
+  scaledHeight(oldW, oldH, newW) {
+    return (oldH / oldW) * newW;
+  }
+
+  renderVideo(video) {
+    console.log('rendering video');
+    return <View style={{height: 300, width: 300}} />;
+  }
+
+  renderImage(image) {
+    return (
+      <Image
+        style={{
+          width: 300,
+          height: 300,
+          borderRadius: 600,
+          resizeMode: 'contain',
+          overflow: 'hidden',
+        }}
+        source={image}
+      />
+    );
+  }
+
+  renderAsset(image) {
+    if (image.mime && image.mime.toLowerCase().indexOf('video/') !== -1) {
+      return this.renderVideo(image);
+    }
+
+    return this.renderImage(image);
+  }
+
+  render() {
+    return (
+      <View style={styles.container}>
+        <ScrollView>
+          {this.state.image ? this.renderAsset(this.state.image) : null}
+          {this.state.images
+            ? this.state.images.map((i) => (
+                <View key={i.uri}>{this.renderAsset(i)}</View>
+              ))
+            : null}
+        </ScrollView>
+
+        <TouchableOpacity
+          onPress={() => this.pickSingleWithCamera(false)}
+          style={styles.button}>
+          <Text style={styles.text}>Select Single Image With Camera</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => this.pickSingleWithCamera(true)}
+          style={styles.button}>
+          <Text style={styles.text}>
+            Select Single With Camera With Cropping
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => this.pickSingle(false)}
+          style={styles.button}>
+          <Text style={styles.text}>Select Single</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => this.cropLast()} style={styles.button}>
+          <Text style={styles.text}>Crop Last Selected Image</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => this.pickSingleBase64(false)}
+          style={styles.button}>
+          <Text style={styles.text}>Select Single Returning Base64</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => this.pickSingle(true)}
+          style={styles.button}>
+          <Text style={styles.text}>Select Single With Cropping</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => this.pickSingle(true, true)}
+          style={styles.button}>
+          <Text style={styles.text}>Select Single With Circular Cropping</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={this.pickMultiple.bind(this)}
+          style={styles.button}>
+          <Text style={styles.text}>Select Multiple</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={this.cleanupImages.bind(this)}
+          style={styles.button}>
+          <Text style={styles.text}>Cleanup All Images</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={this.cleanupSingleImage.bind(this)}
+          style={styles.button}>
+          <Text style={styles.text}>Cleanup Single Image</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+}
